@@ -12,7 +12,7 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 login("Your_Hugging_Face_Token") # 替换成你的 Hugging Face 访问令牌
 
 # ========================================================
-# 1. 后勤准备：加载数据并进行 70/15/15 切分
+# 1. 后勤准备：加载数据
 # ========================================================
 def load_and_split_data(path="dataset"):
     print("📂 正在读取你的数据集...")
