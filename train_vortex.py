@@ -9,7 +9,7 @@ from huggingface_hub import login
 import os
 
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-login("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") # 替换成你的 Hugging Face 访问令牌
+login("Your_Hugging_Face_Token") # 替换成你的 Hugging Face 访问令牌
 
 # ========================================================
 # 1. 后勤准备：加载数据并进行 70/15/15 切分
