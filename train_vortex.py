@@ -9,7 +9,7 @@ from huggingface_hub import login
 import os
 
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-login("Your_Hugging_Face_Token") # 替换成你的 Hugging Face 访问令牌
+login("YOUR_HUGGING_FACE_TOKEN") # 替换成你的 Hugging Face 访问令牌
 
 # ========================================================
 # 1. 后勤准备：加载数据
@@ -46,20 +46,27 @@ def compute_volume_loss(hidden_in, hidden_attn, hidden_mlp):
     q_mock = hidden_in[:, -1, :]   # 当前词
     k_mock = hidden_in[:, -2, :]   # 上一个词
     v_mock = hidden_in[:, -3, :]   # 上上个词
+
+    # 防作弊机制：把向量长度强行压缩为 1，只研究它们的夹角（纯粹的正交性）
+    hidden_in_norm = hidden_in / (mx.linalg.norm(hidden_in, axis=-1, keepdims=True) + 1e-6)
+    hidden_attn_norm = hidden_attn / (mx.linalg.norm(hidden_attn, axis=-1, keepdims=True) + 1e-6)
+    hidden_mlp_norm = hidden_mlp / (mx.linalg.norm(hidden_mlp, axis=-1, keepdims=True) + 1e-6)
+    
+    # 用带 _norm 的张量去算矩阵 M 和 行列式...
     
     # 构建 3x3 矩阵 (在 Batch 维度上进行)
     # 用三大物理场与特征向量做点积，瞬间降维
-    row1 = mx.stack([mx.sum(hidden_in[:, -1, :] * q_mock, axis=-1), 
-                     mx.sum(hidden_in[:, -1, :] * k_mock, axis=-1), 
-                     mx.sum(hidden_in[:, -1, :] * v_mock, axis=-1)], axis=-1)
+    row1 = mx.stack([mx.sum(hidden_in_norm[:, -1, :] * q_mock, axis=-1), 
+                     mx.sum(hidden_in_norm[:, -1, :] * k_mock, axis=-1), 
+                     mx.sum(hidden_in_norm[:, -1, :] * v_mock, axis=-1)], axis=-1)
                      
-    row2 = mx.stack([mx.sum(hidden_attn[:, -1, :] * q_mock, axis=-1), 
-                     mx.sum(hidden_attn[:, -1, :] * k_mock, axis=-1), 
-                     mx.sum(hidden_attn[:, -1, :] * v_mock, axis=-1)], axis=-1)
+    row2 = mx.stack([mx.sum(hidden_attn_norm[:, -1, :] * q_mock, axis=-1), 
+                     mx.sum(hidden_attn_norm[:, -1, :] * k_mock, axis=-1), 
+                     mx.sum(hidden_attn_norm[:, -1, :] * v_mock, axis=-1)], axis=-1)
                      
-    row3 = mx.stack([mx.sum(hidden_mlp[:, -1, :] * q_mock, axis=-1), 
-                     mx.sum(hidden_mlp[:, -1, :] * k_mock, axis=-1), 
-                     mx.sum(hidden_mlp[:, -1, :] * v_mock, axis=-1)], axis=-1)
+    row3 = mx.stack([mx.sum(hidden_mlp_norm[:, -1, :] * q_mock, axis=-1), 
+                     mx.sum(hidden_mlp_norm[:, -1, :] * k_mock, axis=-1), 
+                     mx.sum(hidden_mlp_norm[:, -1, :] * v_mock, axis=-1)], axis=-1)
     
     M = mx.stack([row1, row2, row3], axis=-1) # shape: (batch_size, 3, 3)
     
@@ -183,7 +190,7 @@ def main():
     
     color1 = 'tab:red'
     ax1.set_xlabel('Training Steps (训练步数)')
-    ax1.set_ylabel('CE Loss (死记硬背的误差)', color=color1)
+    ax1.set_ylabel('CE Loss ', color=color1)
     ax1.plot(steps_vortex, history_vortex["ce_loss"], color=color1, label='CE Loss', linewidth=2)
     ax1.tick_params(axis='y', labelcolor=color1)
     
@@ -193,7 +200,7 @@ def main():
     ax2.plot(steps_vortex, history_vortex["volume"], color=color2, label='Volume', linewidth=2, linestyle='--')
     ax2.tick_params(axis='y', labelcolor=color2)
     
-    plt.title('图表 A: Grokking (顿悟) 心电图 - Vortex Model')
+    plt.title('图表 A: 心电图 - Vortex Model')
     fig.tight_layout()  
     plt.savefig('chart_A_grokking.png', dpi=300)
     print("✅ 图表 A 保存为 'chart_A_grokking.png'")
